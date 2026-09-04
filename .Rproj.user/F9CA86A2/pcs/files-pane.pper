@@ -1,0 +1,13 @@
+{
+    "sortOrder": [
+        {
+            "columnIndex": 4,
+            "ascending": false
+        },
+        {
+            "columnIndex": 2,
+            "ascending": true
+        }
+    ],
+    "path": "/media/grosati/Elements1/PEN/Datasets_ML/factor_data_tesina_santi/paper/outputs"
+}

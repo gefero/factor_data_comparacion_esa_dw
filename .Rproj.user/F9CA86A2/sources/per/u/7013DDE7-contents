@@ -1,0 +1,32 @@
+library(sf)
+library(tidyverse)
+
+div_overall <- read_sf('./Data/Geo/divergence_overall_prods_h3_res6.geojson')
+#gwstats_uso <- read_rds('./outputs/gwr_descr_usotierra_bw2.rds')
+#gwstats_tam <- read_rds('./outputs/gwr_descr_tamanio_bw2.rds')
+
+#gwstats <- gwstats_uso$SDF %>%
+#  cbind(gwstats_tam$SDF) %>%
+#  st_as_sf()
+
+gwstats <- read_rds('./outputs/gwr_descr_usotierra_tamanio_bw3.rds')
+
+x <- div_overall %>%
+  st_join(gwstats$SDF %>% st_as_sf())
+
+library(patchwork)
+
+(x %>%
+  ggplot() + 
+    geom_sf(aes(fill=Spearman_rho_js_divergence.prop_sin_asal), color=NA) +
+    scale_fill_viridis_c(na.value = "grey100") +
+    theme_minimal() +
+    labs(fill="Spearman JSD y % unidades sin asalariados")
+) + 
+(x %>%
+  ggplot() + 
+  geom_sf(aes(fill=Spearman_rho_js_divergence.prop_agricult), color=NA) +
+  scale_fill_viridis_c(na.value = "grey100") +
+  theme_minimal() +
+  labs(fill="Spearman JSD y % unidades agrícolas")
+) + plot_layout(guides = 'collect')

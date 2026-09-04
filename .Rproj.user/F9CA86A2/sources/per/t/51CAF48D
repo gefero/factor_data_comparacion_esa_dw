@@ -1,0 +1,27 @@
+{
+    "id": "51CAF48D",
+    "path": "/media/grosati/Elements1/PEN/Datasets_ML/factor_data_tesina_santi/paper/R/01_estimate_gw_statistcs.R",
+    "project_path": "R/01_estimate_gw_statistcs.R",
+    "type": "r_source",
+    "hash": "1265527166",
+    "contents": "",
+    "dirty": false,
+    "created": 1761164933655.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "12,34",
+        "scrollLine": "3"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1761578675,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1761578675777,
+    "read_only": false,
+    "read_only_alternatives": []
+}
