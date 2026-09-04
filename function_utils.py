@@ -893,6 +893,90 @@ def process_dynamic_world(
         print(f"Error during processing: {str(e)}")
         raise
 
+def _normalize_pixel_count_key(key: Union[str, int, float]) -> str:
+    """
+    Normalizes a frequencyHistogram key to a plain integer string ('0', '1', ...).
+
+    GEE's reduceRegion(frequencyHistogram) sometimes returns keys as float-like
+    strings (e.g. '0.0') instead of plain integers (e.g. '0') when the source
+    band was cast to a float/double type (this happens with .mode() composites
+    in some Dynamic World pulls). A lookup like `dw_dict.get(str(dw_class), 0)`
+    silently returns 0 for every class in that case instead of raising an error,
+    which is what happened in the resolution-6 run behind
+    Data/Geo/landcover_analysis_results_resolution_6.csv: every per-class
+    dw_pixels/dw_proportion value in that file is 0, while the hexagon-level
+    aggregates (which sum dict.values() regardless of key format) are fine.
+    """
+    return str(int(round(float(key))))
+
+
+def compute_hexagon_divergence_metrics(
+    esa_dict: Dict[Union[str, int], Union[str, int, float]],
+    dw_dict: Dict[Union[str, int], Union[str, int, float]],
+    class_mapping: Dict[int, int],
+    n_classes: int = 9
+) -> Dict[str, float]:
+    """
+    Computes js_divergence and kappa for one hexagon from raw ESA/DW pixel
+    frequency histograms, reconstructing the metrics used in
+    Data/Geo/landcover_analysis_results_resolution_6.csv (whose original
+    generating script is not committed in this repo).
+
+    Both metrics are derived purely from the marginal class distributions
+    (no joint/pixel-level confusion matrix is available from two independent
+    reduceRegion(frequencyHistogram) calls, only per-class totals):
+
+    - js_divergence: Jensen-Shannon divergence (base-2, in bits, range [0, 1])
+      between the ESA and DW class-proportion vectors (each normalized to sum
+      to 1 over `n_classes` DW classes, ESA reclassified via `class_mapping`).
+    - kappa: Cohen's kappa computed from marginals only, po = observed overall
+      accuracy (matched / mean(total_esa, total_dw)), pe = sum_i(p_esa_i * p_dw_i)
+      assuming independence between the two marginal distributions.
+
+    Args:
+        esa_dict: raw {class_key: pixel_count} histogram for ESA WorldCover
+        dw_dict: raw {class_key: pixel_count} histogram for Dynamic World
+        class_mapping: ESA class code -> DW class code (see `class_mapping`
+            in Testeo_validacion_metodología_paper.ipynb)
+        n_classes: number of DW classes (9)
+
+    Returns:
+        Dict with 'js_divergence', 'kappa', 'overall_accuracy'
+    """
+    grouped_esa = {c: 0 for c in range(n_classes)}
+    for esa_class, count in esa_dict.items():
+        dw_class = class_mapping[int(round(float(esa_class)))]
+        grouped_esa[dw_class] += int(round(float(count)))
+
+    dw_counts = {c: 0 for c in range(n_classes)}
+    for key, count in dw_dict.items():
+        dw_class = int(_normalize_pixel_count_key(key))
+        if dw_class in dw_counts:
+            dw_counts[dw_class] += int(round(float(count)))
+
+    total_esa = sum(grouped_esa.values())
+    total_dw = sum(dw_counts.values())
+    if total_esa == 0 or total_dw == 0:
+        return {'js_divergence': np.nan, 'kappa': np.nan, 'overall_accuracy': np.nan}
+
+    p = np.array([grouped_esa[c] / total_esa for c in range(n_classes)])
+    q = np.array([dw_counts[c] / total_dw for c in range(n_classes)])
+
+    matched = sum(min(grouped_esa[c], dw_counts[c]) for c in range(n_classes))
+    overall_accuracy = matched / ((total_esa + total_dw) / 2)
+
+    m = (p + q) / 2
+    def kl(a, b):
+        mask = a > 0
+        return float(np.sum(a[mask] * np.log2(a[mask] / b[mask])))
+    js_divergence = 0.5 * kl(p, m) + 0.5 * kl(q, m)
+
+    pe = float(np.sum(p * q))
+    kappa = (overall_accuracy - pe) / (1 - pe) if pe < 1 else np.nan
+
+    return {'js_divergence': js_divergence, 'kappa': kappa, 'overall_accuracy': overall_accuracy}
+
+
 def visualize_areas(areas: Dict[str, ee.Geometry.Polygon],
                     colors: Dict[str, Dict[str, str]] = None) -> geemap.Map:
     """

@@ -102,6 +102,18 @@ Crea un mapa interactivo de áreas de estudio.
 - **colors**: Diccionario de estilos de visualización
 - **Retorna**: Objeto geemap.Map
 
+### compute_hexagon_divergence_metrics
+```python
+compute_hexagon_divergence_metrics(
+    esa_dict: Dict, dw_dict: Dict, class_mapping: Dict[int, int], n_classes: int = 9
+)
+```
+Reconstruye `js_divergence` y `kappa` para un hexágono a partir de los histogramas de frecuencia crudos de ESA y DW (el script original que generó estas columnas en `Data/Geo/landcover_analysis_results_resolution_6.csv` no está commiteado en el repo).
+- **esa_dict, dw_dict**: histogramas crudos `{clase: n_píxeles}` devueltos por `reduceRegion(frequencyHistogram)`
+- **class_mapping**: mapeo de clase ESA → clase DW
+- **Retorna**: `{'js_divergence', 'kappa', 'overall_accuracy'}`
+- **Nota:** normaliza las claves del histograma de DW (acepta `'0'` o `'0.0'`) para evitar el bug detectado en `landcover_analysis_results_resolution_6.csv`, donde `dw_pixels`/`dw_proportion` quedaron en 0 en el 100% de las filas por un mismatch de formato de clave, mientras que los agregados por hexágono (que no dependen de esa clave) sí son válidos. Fórmulas validadas manualmente contra un hexágono de `Data/Geo/DW_Validado_Resolution_4.csv` (que sí tiene `dw_pixels` correctos).
+
 ## Dependencias
 - earthengine-api
 - geemap
